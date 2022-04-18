@@ -1,7 +1,7 @@
 const puppeteer = require('puppeteer');
 const thesaurus = require("thesaurus");
 
-const startingWord = "keyboard";
+const startingWord = "apple";
 
 let guessedWords = new Set();
 let thesaurusedWords = new Set();
@@ -11,6 +11,8 @@ let nextWords = [startingWord];
 function getWordNum(total, num) {
   if (total == 1) {
     return "#guesses > tbody > tr > td:nth-child(2)";
+  } else if (num == 1) {
+    return "#guesses > tbody > tr:nth-child(2) > td:nth-child(2)";
   } else {
     return "#guesses > tbody > tr:nth-child(" + (num+3) + ") > td:nth-child(2)";
   }
@@ -35,7 +37,7 @@ async function solve() {
     await input.type(nextWord);
     await page.waitForTimeout(10);
     await guessButton.click();
-    await page.waitForTimeout(40);
+    await page.waitForTimeout(50);
     numGuessedWords++;
 
     let wordRank = 1;
