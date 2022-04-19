@@ -1,22 +1,11 @@
 const puppeteer = require('puppeteer');
 const thesaurus = require("thesaurus");
 
-const startingWord = "apple";
+const startingWord = "love";
 
 let guessedWords = new Set();
-let thesaurusedWords = new Set();
-let numGuessedWords = 0;
 let nextWords = [startingWord];
-
-function getWordNum(total, num) {
-  if (total == 1) {
-    return "#guesses > tbody > tr > td:nth-child(2)";
-  } else if (num == 1) {
-    return "#guesses > tbody > tr:nth-child(2) > td:nth-child(2)";
-  } else {
-    return "#guesses > tbody > tr:nth-child(" + (num+3) + ") > td:nth-child(2)";
-  }
-}
+let wordsToThesaurize = [];
 
 async function solve() {
   const browser = await puppeteer.launch({ headless: false });
@@ -30,41 +19,49 @@ async function solve() {
 
   let finalDialogBox = await page.waitForSelector("#response");
 
-  bigLoop: while (await (await finalDialogBox.getProperty('className'))._remoteObject.value != "gaveup") {
+  while (await (await finalDialogBox.getProperty('className'))._remoteObject.value != "gaveup") {
+
+    // Guess word
     let nextWord = nextWords.pop();
-    console.log(nextWord);
+    // console.log(nextWord);
     guessedWords.add(nextWord);
     await input.type(nextWord);
     await page.waitForTimeout(10);
     await guessButton.click();
     await page.waitForTimeout(50);
-    numGuessedWords++;
 
-    let wordRank = 1;
-    while(nextWords.length == 0) {
-      let guessElement = await page.waitForSelector(getWordNum(numGuessedWords, wordRank));
-      let wordAtRank = await (await guessElement.getProperty('textContent'))._remoteObject.value;
-      if (!thesaurusedWords.has(wordAtRank)) {
-        let newWords = thesaurus.find(wordAtRank);
-        for (let word of newWords) {
-          if (!guessedWords.has(word)) {
-            nextWords.push(word);
-          }
+    // Add the guessed word to wordsToThesaurize
+    let guessedWordElement = await page.waitForSelector("#guesses > tbody > tr > td:nth-child(2)");
+    let guessedWord = await (await guessedWordElement.getProperty('textContent'))._remoteObject.value;
+    if (nextWord == guessedWord) { // If the word is a valid, accepted word
+      let numericalResultElement = await page.waitForSelector("#guesses > tbody > tr > td:nth-child(3)");
+      let numericalResult = await (await numericalResultElement.getProperty('textContent'))._remoteObject.value;
+      let i = 0;
+      insert: for (; i < wordsToThesaurize.length; i++) {
+        if (parseFloat(numericalResult) > parseFloat(wordsToThesaurize[i][1])) {
+          wordsToThesaurize.splice(i, 0, [guessedWord, numericalResult]);
+          break insert;
         }
-        thesaurusedWords.add(wordAtRank);
-      } else {
-        wordRank++;
-        if (wordRank == numGuessedWords) {
-          console.log("Failed :(");
-          break bigLoop;
-        }
+      }
+      if (i == wordsToThesaurize.length) {
+        wordsToThesaurize.push([guessedWord, numericalResult])
       }
     }
 
+    // Queue up the next words to guess
+    while (nextWords.length == 0 && wordsToThesaurize.length > 0) {
+      let newWords = thesaurus.find(wordsToThesaurize[0][0]);
+      for (let word of newWords) {
+        if (!guessedWords.has(word) && !word.includes(" ")) {
+          nextWords.push(word);
+        }
+      }
+      wordsToThesaurize.shift();
+    }
   }
   console.log("done!")
 
-  await page.waitForTimeout(30000);
+  await page.waitForTimeout(60000);
   browser.close()
 }
 
