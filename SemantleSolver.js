@@ -1,7 +1,7 @@
 const puppeteer = require('puppeteer');
 const thesaurus = require("thesaurus");
 
-const startingWord = "love";
+const startingWord = "apple";
 
 let guessedWords = new Set();
 let nextWords = [startingWord];
@@ -26,14 +26,15 @@ async function solve() {
     // console.log(nextWord);
     guessedWords.add(nextWord);
     await input.type(nextWord);
-    await page.waitForTimeout(10);
+    await page.waitForTimeout(20);
     await guessButton.click();
-    await page.waitForTimeout(50);
+    await page.waitForTimeout(100);
 
     // Add the guessed word to wordsToThesaurize
     let guessedWordElement = await page.waitForSelector("#guesses > tbody > tr > td:nth-child(2)");
     let guessedWord = await (await guessedWordElement.getProperty('textContent'))._remoteObject.value;
     if (nextWord == guessedWord) { // If the word is a valid, accepted word
+      // console.log('valid word')
       let numericalResultElement = await page.waitForSelector("#guesses > tbody > tr > td:nth-child(3)");
       let numericalResult = await (await numericalResultElement.getProperty('textContent'))._remoteObject.value;
       let i = 0;
